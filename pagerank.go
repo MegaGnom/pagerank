@@ -11,11 +11,11 @@ type Interface interface {
 }
 
 type pageRank struct {
+	keyToIndex            map[int]int
+	indexToKey            map[int]int
 	inLinks               [][]int
 	numberOutLinks        []int
 	currentAvailableIndex int
-	keyToIndex            map[int]int
-	indexToKey            map[int]int
 }
 
 func New() *pageRank {
