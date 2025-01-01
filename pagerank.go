@@ -21,8 +21,6 @@ type pageRank struct {
 	currentAvailableIndex int
 }
 
-var _ Interface = (*pageRank)(nil)
-
 func New() Interface {
 	pr := new(pageRank)
 	pr.Clear()
