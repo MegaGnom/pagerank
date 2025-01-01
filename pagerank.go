@@ -8,6 +8,7 @@ import (
 type Interface interface {
 	Rank(followingProb, tolerance float64, resultFunc func(label int, rank float64))
 	Link(from, to int)
+	Clear()
 }
 
 type pageRank struct {
@@ -18,10 +19,20 @@ type pageRank struct {
 	currentAvailableIndex int
 }
 
-func New() *pageRank {
+var _ Interface = (*pageRank)(nil)
+
+func New() Interface {
 	pr := new(pageRank)
 	pr.Clear()
 	return pr
+}
+
+func (pr *pageRank) Clear() {
+	pr.inLinks = [][]int{}
+	pr.numberOutLinks = []int{}
+	pr.currentAvailableIndex = 0
+	pr.keyToIndex = make(map[int]int)
+	pr.indexToKey = make(map[int]int)
 }
 
 func (pr *pageRank) String() string {
@@ -160,12 +171,4 @@ func (pr *pageRank) Rank(followingProb, tolerance float64, resultFunc func(label
 	for i, pForI := range p {
 		resultFunc(pr.indexToKey[i], pForI)
 	}
-}
-
-func (pr *pageRank) Clear() {
-	pr.inLinks = [][]int{}
-	pr.numberOutLinks = []int{}
-	pr.currentAvailableIndex = 0
-	pr.keyToIndex = make(map[int]int)
-	pr.indexToKey = make(map[int]int)
 }
