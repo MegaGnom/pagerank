@@ -3,6 +3,7 @@ package pagerank
 import (
 	"fmt"
 	"math"
+	"sync"
 )
 
 type Interface interface {
@@ -12,6 +13,7 @@ type Interface interface {
 }
 
 type pageRank struct {
+	mutex                 sync.RWMutex
 	keyToIndex            map[int]int
 	indexToKey            map[int]int
 	inLinks               [][]int
@@ -28,14 +30,21 @@ func New() Interface {
 }
 
 func (pr *pageRank) Clear() {
+	pr.mutex.Lock()
+
 	pr.inLinks = [][]int{}
 	pr.numberOutLinks = []int{}
 	pr.currentAvailableIndex = 0
 	pr.keyToIndex = make(map[int]int)
 	pr.indexToKey = make(map[int]int)
+
+	pr.mutex.Unlock()
 }
 
 func (pr *pageRank) String() string {
+	pr.mutex.RLock()
+	defer pr.mutex.RUnlock()
+
 	return fmt.Sprintf(
 		"PageRank Struct:\n"+
 			"InLinks: %v\n"+
@@ -52,36 +61,48 @@ func (pr *pageRank) String() string {
 }
 
 func (pr *pageRank) keyAsArrayIndex(key int) int {
+	pr.mutex.RLock()
 	index, ok := pr.keyToIndex[key]
+	pr.mutex.RUnlock()
 
 	if !ok {
+		pr.mutex.Lock()
 		index = pr.currentAvailableIndex
 		pr.currentAvailableIndex++
 		pr.keyToIndex[key] = index
 		pr.indexToKey[index] = key
+		pr.mutex.Unlock()
 	}
 
 	return index
 }
 
 func (pr *pageRank) updateInLinks(fromAsIndex, toAsIndex int) {
+	pr.mutex.RLock()
 	missingSlots := len(pr.keyToIndex) - len(pr.inLinks)
+	pr.mutex.RUnlock()
 
+	pr.mutex.Lock()
 	if missingSlots > 0 {
 		pr.inLinks = append(pr.inLinks, make([][]int, missingSlots)...)
 	}
-
+	
 	pr.inLinks[toAsIndex] = append(pr.inLinks[toAsIndex], fromAsIndex)
+	pr.mutex.Unlock()
 }
 
 func (pr *pageRank) updateNumberOutLinks(fromAsIndex int) {
+	pr.mutex.RLock()
 	missingSlots := len(pr.keyToIndex) - len(pr.numberOutLinks)
+	pr.mutex.RUnlock()
 
+	pr.mutex.Lock()
 	if missingSlots > 0 {
 		pr.numberOutLinks = append(pr.numberOutLinks, make([]int, missingSlots)...)
 	}
 
 	pr.numberOutLinks[fromAsIndex] += 1
+	pr.mutex.Unlock()
 }
 
 func (pr *pageRank) linkWithIndices(fromAsIndex, toAsIndex int) {
@@ -119,6 +140,7 @@ func (pr *pageRank) step(followingProb, tOverSize float64, p []float64, dangling
 	vsum := 0.0
 	v := make([]float64, len(p))
 
+	pr.mutex.RLock()
 	for i, inLinksForI := range pr.inLinks {
 		ksum := 0.0
 
@@ -129,6 +151,7 @@ func (pr *pageRank) step(followingProb, tOverSize float64, p []float64, dangling
 		v[i] = followingProb*(ksum+innerProductOverSize) + tOverSize
 		vsum += v[i]
 	}
+	pr.mutex.RUnlock()
 
 	inverseOfSum := 1.0 / vsum
 
